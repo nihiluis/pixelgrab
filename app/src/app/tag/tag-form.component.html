@@ -1,0 +1,33 @@
+<form [formGroup]="formGroup">
+  <div class="flex flex-col gap-2">
+    <label class="text-lg">Tags</label>
+    <ul class="flex gap-2">
+      <li
+        class="px-4 py-2 bg-blue-100 rounded-full"
+        *ngFor="let tag of formGroup.get('selectedTags')?.value ?? []"
+      >
+        {{ tag.title }}
+      </li>
+    </ul>
+    <div class="flex gap-4">
+      <p-autoComplete
+        class="!block"
+        formControlName="autocompleteTagText"
+        [suggestions]="filteredAutocompleteTags"
+        (completeMethod)="filterTags($event)"
+        field="title"
+        ><ng-template let-tag pTemplate="item">
+          <div class="flex align-items-center gap-1">
+            <div>{{ tag.title }}</div>
+          </div>
+        </ng-template></p-autoComplete
+      >
+      <button
+        class="block rounded-full w-[32px] h-[32px] bg-blue-300 text-white hover:bg-blue-400 transition-all"
+        (click)="onAddTag()"
+      >
+        +
+      </button>
+    </div>
+  </div>
+</form>

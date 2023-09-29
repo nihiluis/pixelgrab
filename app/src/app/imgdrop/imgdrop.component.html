@@ -1,0 +1,13 @@
+<div>
+  <div class="">
+    <div>
+      <dropzone
+        [config]="dropzoneConfig"
+        (change)="onFileDrop($event)"
+        (error)="onUploadError($event)"
+        (success)="onUploadSuccess($event)"
+      >
+      </dropzone>
+    </div>
+  </div>
+</div>
