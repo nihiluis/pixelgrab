@@ -15,5 +15,28 @@ model Tag {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  title String
+  title        String
+  imageEntries TagInImageEntry[]
+}
+
+model ImageEntry {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  originalFilename String
+  location         String @unique
+
+  tags TagInImageEntry[]
+}
+
+model TagInImageEntry {
+  id Int @id @default(autoincrement())
+
+  tag          Tag        @relation(fields: [tagId], references: [id])
+  tagId        Int
+  imageEntry   ImageEntry @relation(fields: [imageEntryId], references: [id])
+  imageEntryId String
+
+  @@unique([tagId, imageEntryId])
 }

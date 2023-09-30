@@ -1,13 +1,5 @@
-<div>
-  <div class="">
-    <div>
-      <dropzone
-        [config]="dropzoneConfig"
-        (change)="onFileDrop($event)"
-        (error)="onUploadError($event)"
-        (success)="onUploadSuccess($event)"
-      >
-      </dropzone>
-    </div>
-  </div>
+<div class="mb-4">
+  <my-dropzone>
+    <input type="file" fileInput accept="image/*" [formControl]="profileImg" />
+  </my-dropzone>
 </div>
