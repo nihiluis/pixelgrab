@@ -1,0 +1,30 @@
+<div class="mb-4">
+  <div class="mb-4">
+    <app-tagfilter
+      (selectedTagsEvent)="handleSelectedTagsChange($event)"
+    ></app-tagfilter>
+  </div>
+  <div class="flex gap-4 mb-4 flex-wrap">
+    <div
+      class="max-w-[220px] box-border rounded-lg overflow-hidden"
+      *ngFor="let entry of allEntries"
+    >
+      <img
+        class="overflow-hidden rounded-lg"
+        src="{{ entry.location }}"
+        [ngClass]="{
+            'border-[3px] border-blue-800': entry === selectedEntry,
+            'p-[3px]': entry !== selectedEntry,
+          }"
+        (click)="handleClick(entry)"
+      />
+    </div>
+  </div>
+  <div class="mb-4">
+    <p>Selected entry: {{ selectedEntry?.originalFilename ?? "-" }}</p>
+  </div>
+  <app-tag-form
+    *ngIf="!!selectedEntry"
+    [selectedEntry]="selectedEntry"
+  ></app-tag-form>
+</div>

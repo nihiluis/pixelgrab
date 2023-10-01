@@ -14,3 +14,11 @@
 .p-autocomplete-input {
     @apply border-gray-200 border px-2 py-1 drop-shadow-sm;
 }
+
+.p-multiselect {
+    @apply w-full;
+}
+
+.p-multiselect-filter {
+    @apply px-2 py-1;
+}

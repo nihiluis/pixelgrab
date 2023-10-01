@@ -1,0 +1,10 @@
+<div class="mb-4 w-full">
+  <p-multiSelect
+    class="w-full block"
+    [options]="allTags"
+    [(ngModel)]="selectedTags"
+    optionLabel="title"
+    placeholder="Filter tags..."
+    (ngModelChange)="onSelectedTagsChange($event)"
+  ></p-multiSelect>
+</div>

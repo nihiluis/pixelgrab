@@ -16,20 +16,16 @@ export interface Tag {
   id: number
 }
 
+export const TagZodObject = z.object({
+  title: z.string(),
+  id: z.number(),
+})
 const GetTagsApiResponse = z.object({
-  tags: z.array(
-    z.object({
-      title: z.string(),
-      id: z.number(),
-    })
-  ),
+  tags: z.array(TagZodObject),
 })
 
 const CreateTagApiResponse = z.object({
-  tag: z.object({
-    title: z.string(),
-    id: z.number(),
-  }),
+  tag: TagZodObject,
   isNew: z.boolean(),
 })
 
@@ -45,10 +41,14 @@ export class TagService {
       .pipe(map(res => GetTagsApiResponse.parse(res).tags))
   }
 
-  getOrCreateTag(title: string): Observable<CreateTagApiResponse["tag"]> {
+  getOrCreateTag(
+    title: string,
+    imageEntryId: string | null
+  ): Observable<CreateTagApiResponse["tag"]> {
     return this.http
       .post(CREATE_TAG_API_URL, {
         title,
+        imageEntryId,
       })
       .pipe(map(res => CreateTagApiResponse.parse(res).tag))
   }

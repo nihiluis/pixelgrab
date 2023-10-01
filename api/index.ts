@@ -1,9 +1,16 @@
 import express from "express"
 import multer from "multer"
 import cors from "cors"
-import { ImageEntry, PrismaClient, Tag, TagInImageEntry } from "@prisma/client"
+import {
+  ImageEntry,
+  Prisma,
+  PrismaClient,
+  Tag,
+  TagInImageEntry,
+} from "@prisma/client"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import { getFileExtension } from "./utils"
+import { z } from "zod"
 
 const app = express()
 const port = process.env.PORT || 3333
@@ -44,7 +51,7 @@ app.get("/tags", async (req, res) => {
 })
 
 app.post("/tag", async (req, res) => {
-  const { title } = req.body
+  const { title, imageEntryId } = req.body
   if (!title) {
     return res.status(400).json({ message: "Title cannot be empty." })
   }
@@ -64,25 +71,42 @@ app.post("/tag", async (req, res) => {
     isNew = true
   }
 
-  res.status(200).json({ tag, isNew })
+  let createdTag = false
+  if (imageEntryId) {
+    await prisma.tagInImageEntry.create({
+      data: { tagId: tag.id, imageEntryId },
+    })
+    createdTag = true
+  }
+
+  res.status(200).json({ tag, isNew, createdTag })
 })
 
-type ImageEntryTags = { tags: { tag: Tag }[] }
+export const searchSchema = z.object({
+  page: z.coerce.number().min(1).max(99).default(1),
+  tags: z.array(z.coerce.number().min(0)).default([]),
+})
+
 app.get("/search", async (req, res) => {
   const ITEMS_PER_PAGE = 10
 
-  const pageStr = req.query.page ?? ""
-  const page = parseInt(pageStr as string)
-
-  let entries: (ImageEntry & ImageEntryTags)[]
-
-  const tagsTheEntryShouldHaveStr = (req.query.tag as string) ?? ""
-  const tagsTheEntryShouldHave = tagsTheEntryShouldHaveStr
+  const tagsTheEntryShouldHaveStr = (req.query.tags as string) ?? ""
+  const tagsTheEntryShouldHaveRaw = tagsTheEntryShouldHaveStr
     .split(",")
     .filter(tag => tag.length > 0)
 
-  if (tagsTheEntryShouldHave.length === 0) {
-    entries = await prisma.imageEntry.findMany({
+  const validationObj = { ...req.query, tags: tagsTheEntryShouldHaveRaw }
+  const parsedInput = searchSchema.parse(validationObj)
+
+  const { tags: tagsTheEntryShouldHave, page } = parsedInput
+
+  type ImageEntryWithTags = ImageEntry & { tags: Tag[] }
+  let entries: ImageEntryWithTags[]
+
+  const skipOffset = ITEMS_PER_PAGE * (page - 1)
+
+  if (tagsTheEntryShouldHaveRaw.length === 0) {
+    const entriesResult = await prisma.imageEntry.findMany({
       take: ITEMS_PER_PAGE,
       skip: ITEMS_PER_PAGE * (page - 1),
       include: {
@@ -93,43 +117,29 @@ app.get("/search", async (req, res) => {
         },
       },
     })
+
+    entries = entriesResult.map(e => ({ ...e, tags: e.tags.map(t => t.tag) }))
   } else {
-    entries = await prisma.imageEntry.findMany({
-      take: ITEMS_PER_PAGE,
-      skip: ITEMS_PER_PAGE * (page - 1),
-      include: {
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
-      where: {
-        tags: {
-          some: {
-            tag: {
-              title: {
-                in: tagsTheEntryShouldHave,
-              },
-            },
-          },
-        },
-      },
-    })
+    const query = Prisma.sql`SELECT 
+    ie.*,
+    subquery.tags
+    FROM "ImageEntry" ie
+    JOIN (
+        SELECT 
+        it."imageEntryId",
+        JSON_AGG(JSON_BUILD_OBJECT('id', t.id, 'title', t.title)) AS tags
+        FROM "TagInImageEntry" it
+        JOIN "Tag" t ON it."tagId" = t.id
+        WHERE t.id IN (${Prisma.join(tagsTheEntryShouldHave)})
+        GROUP BY it."imageEntryId"
+        HAVING COUNT(DISTINCT t.id) = ${tagsTheEntryShouldHave.length}
+    ) subquery ON ie.id = subquery."imageEntryId"
+    LIMIT ${ITEMS_PER_PAGE}
+    OFFSET ${skipOffset};
+    `
 
-    // put this into client
-    entries = entries.filter(entry => {
-      const entryTagTitles = entry.tags.map(t => t.tag.title)
-      for (let tagTitle of tagsTheEntryShouldHave) {
-        if (!entryTagTitles.includes(tagTitle)) {
-          return false
-        }
-      }
-
-      return true
-    })
+    entries = await prisma.$queryRaw(query) as ImageEntryWithTags[]
   }
-
   return res.status(200).json({ message: "", entries })
 })
 
